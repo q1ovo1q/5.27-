@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="./待办事项.css">
+    <script src="./vue.js"></script>
+</head>
+
+<body>
+    <div id="app" class="container">
+        <!-- 左侧面板 -->
+        <div class="left-panel">
+            <!-- 头部 -->
+            <div class="header">
+                <input type="text" placeholder="搜索" v-model="searchQuery" @input="searchTasks" aria-label="搜索任务">
+            </div>
+            <!-- 列表 -->
+            <div class="lists">
+                <button class="button-style" @click="toggleTab('所有')">所有</button>
+                <button class="button-style" @click="toggleTab('今天')">今天</button>
+                <button class="button-style" @click="toggleTab('最近七天')">最近七天</button>
+                <hr>
+            </div>
+            <!-- 新建列表 -->
+            <div class="list-add">
+                <ul>
+                    <li v-for="(list, index) in lists" :key="index">
+                        <input type="text" v-model="list.newName" v-if="list.editing" @keyup.enter="finishRename(index)"
+                            @blur="cancelRename(index)">
+                        <button v-if="!list.editing" class="button-style" @dblclick="startRename(index)">新建列表</button>
+                        <button v-if="!list.editing" class="deletelist-btn" @click="deleteList(index)">🚮</button>
+                    </li>                    
+                </ul>
+                <span @click="addNewList"><b>+</b>新建列表</span>
+            </div>
+
+        </div>
+        <!-- 右侧面板 -->
+        <div class="right-panel">
+            <div class="list-container">
+                <!-- 所有列表 -->
+                <div class="All-list">
+                    <h1>{{ activeTab }}</h1>
+                    <span class="hide-completed" @click="toggleHide">
+                        {{ hideCompleted ? '显示已完成' : '隐藏已完成' }}
+                    </span>
+                    &emsp;
+                    <span class="clean-completed" @click="clearCompleted">清理已完成</span>
+                </div>
+                <!-- 任务列表 -->
+                <ul class="list-add-list" style="max-height: 530px; overflow-y: auto;">
+                    <li v-for="(task, index) in filteredTasks" :key="index" v-if="!task.completed || !hideCompleted">
+                        <input type="checkbox" class="task-checkbox" v-model="task.completed" aria-label="完成任务">
+                        <label :for="'task'+index" :class="{ 'completed-task': task.completed }">{{ task.name }}</label>
+                        <button class="delete-btn" @click="deleteTask(index)">删除</button>
+                    </li>
+                </ul>
+                <!-- 新建任务 -->
+                <div class="addfinish">
+                    <input type="text" placeholder="+新建待办事项" v-model="newTaskName" @keyup.enter="addTask">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        new Vue({
+            el: "#app",
+            data: {
+                activeTab: '所有',
+                searchQuery: '',
+                hideCompleted: false,
+                newTaskName: '',
+                tasks: [],
+                lists: [],
+                newListName: '',
+                editListIndex: null,
+                showNewListInput: false,
+                filteredTasks: [] 
+            },
+            methods: {
+                // 搜索任务
+                searchTasks() {
+                    this.activeTab = '所有';
+                    this.hideCompleted = false;
+                },
+                // 跳转到指定列表
+                toggleTab(tab) {
+                    this.activeTab = tab;
+                    this.filterTasks();
+                },
+                // 添加任务
+                addTask() {
+                    if (this.newTaskName.trim() !== '') {
+                        const newTask = { name: this.newTaskName, completed: false, date: new Date() };
+                        if (newTask.completed) {
+                            const index = this.tasks.indexOf(newTask);
+                            this.tasks.splice(index, 1);
+                            this.tasks.push(newTask);
+                        } else {
+                            this.tasks.unshift(newTask);
+                        }
+                        this.newTaskName = '';
+                    }
+                },
+                // 删除任务
+                deleteTask(index) {
+                    this.tasks.splice(index, 1);
+                },
+                // 清理已完成
+                clearCompleted() {
+                    this.tasks = this.tasks.filter(task => !task.completed);
+                },
+                // 添加新列表
+                addNewList() {
+                    const newList = {
+                        name: this.newListName,
+                        editing: false,
+                        tasks: [],
+                    };
+                    this.lists.push(newList);
+                    this.newListName = '';
+                    this.showNewListInput = false;
+                },
+                // 隐藏已完成
+                toggleHide() {
+                    this.hideCompleted = !this.hideCompleted;
+                },
+                // 开始重命名列表
+                startRename(index) {
+                    this.editingListIndex = index;
+                    this.lists[index].editing = true;
+                    this.lists[index].newName = this.lists[index].name;
+                },
+                // 完成重命名列表
+                finishRename(index) {
+                    this.lists[index].name = this.lists[index].newName;
+                    this.lists[index].editing = false;
+                },
+                cancelRename(index) {
+                    this.lists[index].editing = false;
+                },
+                // 删除列表
+                deleteList(index) {
+                    this.lists.splice(index, 1);
+                },
+                // 过滤任务
+                filterTasks() {
+                    this.filteredTasks = this.tasks.filter(task => {
+                        return task.name.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
+                            (this.activeTab === '所有' ||
+                                (this.activeTab === '今天' && !task.completed && task.date === new Date()) ||
+                                (this.activeTab === '最近七天' && !task.completed && task.date >= new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000)) ||
+                                (this.activeTab === '待办事项' && !task.completed));
+                    });
+                },
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>
